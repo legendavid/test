@@ -24,13 +24,14 @@ final class SSHClient {
                 return
             }
 
-            let response = session.channel.execute(config.shutdownCommand)
-            let error = session.channel.lastError
+            var executionError: NSError?
+            let response = session.channel.execute(config.shutdownCommand, error: &executionError)
+            let errorMessage = executionError?.localizedDescription ?? session.channel.lastError
             session.disconnect()
 
             DispatchQueue.main.async {
-                if let error = error, !error.isEmpty {
-                    completion(.failure(SSHClientError.remoteError(error)))
+                if let errorMessage = errorMessage, !errorMessage.isEmpty {
+                    completion(.failure(SSHClientError.remoteError(errorMessage)))
                 } else {
                     completion(.success(response ?? ""))
                 }
