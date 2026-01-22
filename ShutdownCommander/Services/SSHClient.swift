@@ -38,6 +38,35 @@ final class SSHClient {
             }
         }
     }
+
+    func testConnection(config: SSHConfig, completion: @escaping (Result<Void, Error>) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let session = NMSSHSession(host: config.host, port: config.port, andUsername: config.username)
+            session.connect()
+
+            guard session.isConnected else {
+                DispatchQueue.main.async {
+                    completion(.failure(SSHClientError.connectionFailed))
+                }
+                return
+            }
+
+            session.authenticate(byPassword: config.password)
+
+            guard session.isAuthorized else {
+                session.disconnect()
+                DispatchQueue.main.async {
+                    completion(.failure(SSHClientError.authenticationFailed))
+                }
+                return
+            }
+
+            session.disconnect()
+            DispatchQueue.main.async {
+                completion(.success(()))
+            }
+        }
+    }
 }
 
 enum SSHClientError: LocalizedError {
