@@ -9,6 +9,7 @@ struct ContentView: View {
 
     @State private var statusMessage = ""
     @State private var isRunning = false
+    @State private var isTesting = false
 
     private let sshClient = SSHClient()
 
@@ -54,13 +55,32 @@ struct ContentView: View {
                             if isRunning {
                                 ProgressView()
                             } else {
-                                Text("立即关机")
+                                Label("立即关机", systemImage: "power.circle.fill")
+                                    .fontWeight(.semibold)
+                                    .labelStyle(.titleAndIcon)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(isRunning || isTesting || host.isEmpty || username.isEmpty || password.isEmpty)
+                }
+
+                Section("连接测试") {
+                    Button {
+                        runConnectionTest()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isTesting {
+                                ProgressView()
+                            } else {
+                                Label("测试 SSH 连通性", systemImage: "bolt.horizontal.circle.fill")
                                     .fontWeight(.semibold)
                             }
                             Spacer()
                         }
                     }
-                    .disabled(isRunning || host.isEmpty || username.isEmpty || password.isEmpty)
+                    .disabled(isRunning || isTesting || host.isEmpty || username.isEmpty || password.isEmpty)
                 }
 
                 if !statusMessage.isEmpty {
@@ -71,6 +91,16 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("局域网关机")
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "desktopcomputer.and.arrow.down")
+                            .foregroundColor(.accentColor)
+                        Text("局域网关机")
+                            .font(.headline)
+                    }
+                }
+            }
         }
     }
 
@@ -91,6 +121,29 @@ struct ContentView: View {
             switch result {
             case let .success(response):
                 statusMessage = response.isEmpty ? "命令已发送。" : response
+            case let .failure(error):
+                statusMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func runConnectionTest() {
+        isTesting = true
+        statusMessage = "正在测试 SSH 连通性..."
+
+        let config = SSHConfig(
+            host: host,
+            port: port,
+            username: username,
+            password: password,
+            shutdownCommand: shutdownCommand
+        )
+
+        sshClient.testConnection(config: config) { result in
+            isTesting = false
+            switch result {
+            case .success:
+                statusMessage = "连接成功，认证通过。"
             case let .failure(error):
                 statusMessage = error.localizedDescription
             }
