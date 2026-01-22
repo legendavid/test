@@ -26,7 +26,7 @@ final class SSHClient {
 
             var executionError: NSError?
             let response = session.channel.execute(config.shutdownCommand, error: &executionError)
-            let errorMessage = executionError?.localizedDescription ?? session.channel.lastError
+            let errorMessage = executionError?.localizedDescription
             session.disconnect()
 
             DispatchQueue.main.async {
