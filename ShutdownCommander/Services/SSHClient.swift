@@ -1,9 +1,13 @@
 import Foundation
+
+#if canImport(NMSSH)
 import NMSSH
+#endif
 
 final class SSHClient {
     func runShutdown(config: SSHConfig, completion: @escaping (Result<String, Error>) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
+#if canImport(NMSSH)
             let session = NMSSHSession(host: config.host, port: config.port, andUsername: config.username)
             session.connect()
 
@@ -36,6 +40,11 @@ final class SSHClient {
                     completion(.success(response ?? ""))
                 }
             }
+#else
+            DispatchQueue.main.async {
+                completion(.failure(SSHClientError.missingDependency))
+            }
+#endif
         }
     }
 
@@ -73,6 +82,7 @@ enum SSHClientError: LocalizedError {
     case connectionFailed
     case authenticationFailed
     case remoteError(String)
+    case missingDependency
 
     var errorDescription: String? {
         switch self {
@@ -82,6 +92,8 @@ enum SSHClientError: LocalizedError {
             return "认证失败，请检查用户名和密码。"
         case let .remoteError(message):
             return "命令执行失败：\(message)"
+        case .missingDependency:
+            return "缺少 NMSSH 依赖，请在项目中添加 NMSSH 以启用 SSH 功能。"
         }
     }
 }
